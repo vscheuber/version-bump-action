@@ -1,4 +1,4 @@
-name: 'Version Bump Action'
+name: 'Semantic Release Version Action'
 description: 'Compute the next semantic version and tag from a release type with prerelease default'
 author: 'Volker Scheuber'
 
