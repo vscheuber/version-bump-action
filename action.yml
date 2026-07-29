@@ -1,0 +1,73 @@
+name: 'Version Bump Action'
+description: 'Compute the next semantic version and tag from a release type with prerelease default'
+author: 'Volker Scheuber'
+
+branding:
+  icon: 'git-branch'
+  color: 'blue'
+
+inputs:
+  release-type:
+    description: 'prerelease | patch | minor | major'
+    required: false
+    default: 'prerelease'
+  current-version:
+    description: 'Optional base version override, e.g. 1.2.3, 1.2.3-rc.1, or v1.2.3'
+    required: false
+    default: ''
+  prerelease-identifier:
+    description: 'Optional prerelease identifier, e.g. rc, beta, alpha'
+    required: false
+    default: ''
+  tag-prefix:
+    description: 'Tag prefix to use for output tags'
+    required: false
+    default: 'v'
+
+outputs:
+  newVersion:
+    description: 'New semantic version'
+    value: ${{ steps.compute.outputs.newVersion }}
+  newTag:
+    description: 'New tag with prefix'
+    value: ${{ steps.compute.outputs.newTag }}
+  preRelease:
+    description: 'Whether the version is a prerelease'
+    value: ${{ steps.compute.outputs.preRelease }}
+  publishTag:
+    description: 'Resolved npm publish tag (next|latest)'
+    value: ${{ steps.compute.outputs.publishTag }}
+  normalized:
+    description: 'Alias of newVersion for compatibility'
+    value: ${{ steps.compute.outputs.normalized }}
+  tag:
+    description: 'Alias of newTag for compatibility'
+    value: ${{ steps.compute.outputs.tag }}
+  is_prerelease:
+    description: 'Alias of preRelease for compatibility'
+    value: ${{ steps.compute.outputs.is_prerelease }}
+  action_release_type:
+    description: 'Mapped release type for changelog actions (prerelease|full)'
+    value: ${{ steps.compute.outputs.action_release_type }}
+  base:
+    description: 'Resolved base version'
+    value: ${{ steps.compute.outputs.base }}
+  base_source:
+    description: 'How the base version was resolved'
+    value: ${{ steps.compute.outputs.base_source }}
+  base_ref:
+    description: 'Tag used as base reference when available'
+    value: ${{ steps.compute.outputs.base_ref }}
+
+runs:
+  using: 'composite'
+  steps:
+    - id: compute
+      shell: bash
+      env:
+        RELEASE_TYPE: ${{ inputs.release-type }}
+        CURRENT_VERSION: ${{ inputs.current-version }}
+        PRERELEASE_IDENTIFIER: ${{ inputs.prerelease-identifier }}
+        TAG_PREFIX: ${{ inputs.tag-prefix }}
+      run: |
+        bash "${{ github.action_path }}/scripts/compute-version.sh"
