@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [v1.0.7] - 2026-08-01
+
+### Changed
+- Cosmetic version update release. This release records a version or release-state change without additional functional code changes.
+
 ## [v1.0.6] - 2026-08-01
 
 ### Changed
