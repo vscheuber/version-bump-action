@@ -40,18 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -f package.json ]]; then
-            NEW_VERSION='${{ steps.version.outputs.newVersion }}' python3 - <<'PY'
-import json
-import os
-
-version = os.environ["NEW_VERSION"]
-with open("package.json", "r", encoding="utf-8") as handle:
-    parsed = json.load(handle)
-parsed["version"] = version
-with open("package.json", "w", encoding="utf-8") as handle:
-    json.dump(parsed, handle, indent=2)
-    handle.write("\n")
-PY
+            NEW_VERSION='${{ steps.version.outputs.newVersion }}' python3 -c 'import json, os; from pathlib import Path; path = Path("package.json"); parsed = json.loads(path.read_text(encoding="utf-8")); parsed["version"] = os.environ["NEW_VERSION"]; path.write_text(json.dumps(parsed, indent=2) + "\n", encoding="utf-8")'
           fi
 
       - name: Update changelog using AI action

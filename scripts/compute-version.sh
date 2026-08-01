@@ -23,7 +23,7 @@ if [[ -n "$current_input" ]]; then
   base_source='input'
 
   candidate1="$current_input"
-  candidate2="${tag_prefix}${current_input#${tag_prefix}}"
+  candidate2="${tag_prefix}${current_input#"${tag_prefix}"}"
   for c in "$candidate1" "$candidate2"; do
     if git rev-parse -q --verify "refs/tags/${c}" >/dev/null 2>&1; then
       base_ref="$c"
@@ -37,7 +37,7 @@ else
 
   while IFS= read -r tag; do
     [[ -z "$tag" ]] && continue
-    stripped="${tag#${tag_prefix}}"
+    stripped="${tag#"${tag_prefix}"}"
     if [[ "$stripped" =~ $semver_re ]]; then
       if [[ -z "$latest_semver" ]]; then
         latest_semver="$tag"
@@ -86,7 +86,7 @@ else
   fi
 fi
 
-base="${base_tag#${tag_prefix}}"
+base="${base_tag#"${tag_prefix}"}"
 if [[ ! "$base" =~ $semver_re ]]; then
   echo "Could not parse semver from '$base_tag'"
   exit 1
