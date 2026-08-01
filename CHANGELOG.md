@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [v1.0.3] - 2026-08-01
+
+### Fixed
+- Improved prerelease logic to prioritize the latest stable tag for versioning, ensuring more accurate version calculations in CI/CD workflows. (#221a8d9)
+
 ## [v1.0.2] - 2026-08-01
 
 ### Added
