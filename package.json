@@ -1,6 +1,6 @@
 {
   "name": "version-bump-action",
-  "version": "1.0.1-2",
+  "version": "1.0.2",
   "private": true,
   "description": "GitHub Action that computes release versions and tags",
   "license": "MIT"
