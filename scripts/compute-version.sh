@@ -7,6 +7,23 @@ prerelease_id="${PRERELEASE_IDENTIFIER:-}"
 tag_prefix="${TAG_PREFIX:-v}"
 semver_re='^([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9A-Za-z.-]+))?$'
 
+semver_core_cmp() {
+  local a="$1"
+  local b="$2"
+  if [[ "$a" == "$b" ]]; then
+    echo 0
+    return
+  fi
+
+  local max
+  max="$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -n1)"
+  if [[ "$max" == "$a" ]]; then
+    echo 1
+  else
+    echo -1
+  fi
+}
+
 case "$release_type" in
   prerelease|patch|minor|major) ;;
   *)
@@ -53,17 +70,52 @@ else
   done <<< "$all_tags"
 
   if [[ "$release_type" == "prerelease" ]]; then
-    # For prereleases, start from the latest stable tag when one exists so a new
-    # prerelease train after a stable release advances to the next patch version.
-    # If there is no stable tag yet, continue from the newest prerelease tag.
-    if [[ -n "$latest_stable" ]]; then
+    # For prereleases, continue an active prerelease train when that train is
+    # ahead of the latest stable release (e.g., stable 1.0.7 + prerelease 1.0.8-1).
+    # Otherwise, start a new prerelease train from the latest stable.
+    if [[ -n "$latest_semver" ]]; then
+      stripped_semver="${latest_semver#"${tag_prefix}"}"
+      if [[ "$stripped_semver" =~ $semver_re ]]; then
+        semver_core="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+        semver_pre="${BASH_REMATCH[5]:-}"
+
+        if [[ -n "$semver_pre" ]]; then
+          if [[ -n "$latest_stable" ]]; then
+            stripped_stable="${latest_stable#"${tag_prefix}"}"
+            if [[ "$stripped_stable" =~ $semver_re ]]; then
+              stable_core="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+              cmp="$(semver_core_cmp "$semver_core" "$stable_core")"
+              if [[ "$cmp" -gt 0 ]]; then
+                base_tag="$latest_semver"
+                base_source='latest-active-prerelease-tag'
+                base_ref="$latest_semver"
+              else
+                base_tag="$latest_stable"
+                base_source='latest-stable-tag'
+                base_ref="$latest_stable"
+              fi
+            else
+              base_tag="$latest_semver"
+              base_source='latest-semver-tag'
+              base_ref="$latest_semver"
+            fi
+          else
+            base_tag="$latest_semver"
+            base_source='latest-semver-tag'
+            base_ref="$latest_semver"
+          fi
+        else
+          base_tag="$latest_semver"
+          base_source='latest-semver-tag'
+          base_ref="$latest_semver"
+        fi
+      fi
+    fi
+
+    if [[ -z "${base_tag:-}" && -n "$latest_stable" ]]; then
       base_tag="$latest_stable"
       base_source='latest-stable-tag'
       base_ref="$latest_stable"
-    elif [[ -n "$latest_semver" ]]; then
-      base_tag="$latest_semver"
-      base_source='latest-semver-tag'
-      base_ref="$latest_semver"
     fi
   else
     # For stable releases, prefer the latest stable tag to avoid reusing an existing stable version.
