@@ -35,7 +35,7 @@ jobs:
 
       - name: Update changelog using AI action
         id: changelog
-        uses: vscheuber/ai-changelog-action@main
+        uses: vscheuber/ai-changelog-action@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           llm-api-key: ${{ secrets.LLM_API_KEY }}
