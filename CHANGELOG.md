@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [v1.0.4] - 2026-08-01
+
+### Changed
+- Updated the release workflow to use the manifest version update action instead of inline package version updates. This change streamlines the version bump process, ensuring consistency across releases.
+
 ## [v1.0.4-1] - 2026-08-01
 
 ### Changed
