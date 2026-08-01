@@ -28,12 +28,10 @@ jobs:
         with:
           release-type: ${{ inputs.release-type }}
 
-      - name: Update package version
-        run: |
-          set -euo pipefail
-          if [[ -f package.json ]]; then
-            NEW_VERSION='${{ steps.version.outputs.newVersion }}' python3 -c 'import json, os; from pathlib import Path; path = Path("package.json"); parsed = json.loads(path.read_text(encoding="utf-8")); parsed["version"] = os.environ["NEW_VERSION"]; path.write_text(json.dumps(parsed, indent=2) + "\n", encoding="utf-8")'
-          fi
+      - name: Update package manifests
+        uses: vscheuber/manifest-version-update-action@v1
+        with:
+          version: ${{ steps.version.outputs.newVersion }}
 
       - name: Update changelog using AI action
         id: changelog
