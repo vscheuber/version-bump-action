@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [v1.0.1-2] - 2026-08-01
+
+### Added
+- Enhanced version computation logic to prioritize stable tags and update the `package.json` version accordingly. This ensures more reliable versioning for projects using this action. (#a9c387b)
+- Introduced logic to update major and minor action tags during the release process, providing more flexibility in version management. (#c79c056)
+
 ## [v1.0.1] - 2026-07-29
 
 ### Added
