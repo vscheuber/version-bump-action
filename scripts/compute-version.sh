@@ -53,8 +53,14 @@ else
   done <<< "$all_tags"
 
   if [[ "$release_type" == "prerelease" ]]; then
-    # For prereleases, continue from the newest semver tag when available.
-    if [[ -n "$latest_semver" ]]; then
+    # For prereleases, start from the latest stable tag when one exists so a new
+    # prerelease train after a stable release advances to the next patch version.
+    # If there is no stable tag yet, continue from the newest prerelease tag.
+    if [[ -n "$latest_stable" ]]; then
+      base_tag="$latest_stable"
+      base_source='latest-stable-tag'
+      base_ref="$latest_stable"
+    elif [[ -n "$latest_semver" ]]; then
       base_tag="$latest_semver"
       base_source='latest-semver-tag'
       base_ref="$latest_semver"
