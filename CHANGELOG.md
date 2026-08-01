@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [v1.0.5-1] - 2026-08-01
+
+### Changed
+- Enhanced version computation logic to improve handling of prereleases. This change refines how version numbers are calculated, ensuring more accurate semantic versioning in line with the SemVer specification. Developers using this library should notice improved version handling, particularly in projects utilizing prerelease tags.
+
 ## [v1.0.4] - 2026-08-01
 
 ### Changed
