@@ -31,7 +31,48 @@ if [[ -n "$current_input" ]]; then
     fi
   done
 else
-  if [[ -f package.json ]]; then
+  all_tags="$(git tag --sort=-v:refname 2>/dev/null || true)"
+  latest_semver=''
+  latest_stable=''
+
+  while IFS= read -r tag; do
+    [[ -z "$tag" ]] && continue
+    stripped="${tag#${tag_prefix}}"
+    if [[ "$stripped" =~ $semver_re ]]; then
+      if [[ -z "$latest_semver" ]]; then
+        latest_semver="$tag"
+      fi
+      pre_component="${BASH_REMATCH[5]:-}"
+      if [[ -z "$pre_component" && -z "$latest_stable" ]]; then
+        latest_stable="$tag"
+      fi
+      if [[ -n "$latest_semver" && -n "$latest_stable" ]]; then
+        break
+      fi
+    fi
+  done <<< "$all_tags"
+
+  if [[ "$release_type" == "prerelease" ]]; then
+    # For prereleases, continue from the newest semver tag when available.
+    if [[ -n "$latest_semver" ]]; then
+      base_tag="$latest_semver"
+      base_source='latest-semver-tag'
+      base_ref="$latest_semver"
+    fi
+  else
+    # For stable releases, prefer the latest stable tag to avoid reusing an existing stable version.
+    if [[ -n "$latest_stable" ]]; then
+      base_tag="$latest_stable"
+      base_source='latest-stable-tag'
+      base_ref="$latest_stable"
+    elif [[ -n "$latest_semver" ]]; then
+      base_tag="$latest_semver"
+      base_source='latest-semver-tag'
+      base_ref="$latest_semver"
+    fi
+  fi
+
+  if [[ -z "${base_tag:-}" && -f package.json ]]; then
     pkg_version="$(node -p "require('./package.json').version" 2>/dev/null || true)"
     if [[ -n "$pkg_version" ]]; then
       base_tag="$pkg_version"
@@ -40,26 +81,8 @@ else
   fi
 
   if [[ -z "${base_tag:-}" ]]; then
-    all_tags="$(git tag --sort=-v:refname 2>/dev/null || true)"
-    latest_semver=''
-
-    while IFS= read -r tag; do
-      [[ -z "$tag" ]] && continue
-      stripped="${tag#${tag_prefix}}"
-      if [[ "$stripped" =~ $semver_re ]]; then
-        latest_semver="$tag"
-        break
-      fi
-    done <<< "$all_tags"
-
-    if [[ -n "$latest_semver" ]]; then
-      base_tag="$latest_semver"
-      base_source='latest-semver-tag'
-      base_ref="$latest_semver"
-    else
-      base_tag='0.0.0'
-      base_source='default-bootstrap'
-    fi
+    base_tag='0.0.0'
+    base_source='default-bootstrap'
   fi
 fi
 
