@@ -2,9 +2,10 @@
 
 ## Unreleased
 
+## [v1.0.10] - 2026-08-02
+
 ### Changed
-- Updated version base resolution for no-tag repositories to bootstrap from valid `package.json` version first, then fallback to `0.0.0`.
-- Retained fail-fast behavior for shallow checkouts and improved logs to show base source selection.
+- Enhanced version resolution and error handling for shallow checkouts, improving reliability and clarity in environments with limited repository history. This includes retaining fail-fast behavior and improved logs to show base source selection. (commit 943a355)
 
 ## [v1.0.9] - 2026-08-02
 
