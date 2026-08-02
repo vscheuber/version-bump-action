@@ -4,6 +4,21 @@ Compute the next semantic version and release tag from a release type.
 
 This action only computes release metadata. It does not update `package.json` or create tags itself; the release workflow handles those steps.
 
+## Prerequisites
+
+This action derives versions from git tags unless you explicitly provide `current-version`. When `current-version` is not supplied, release workflows must fetch full history and tags before invoking the action.
+
+Recommended checkout configuration:
+
+```yaml
+- uses: actions/checkout@v6
+  with:
+    fetch-depth: 0
+    fetch-tags: true
+```
+
+If `current-version` is not supplied and the workflow uses a shallow checkout or does not fetch tags, the action now fails with guidance instead of falling back to weak sources such as `package.json` or `0.0.0`.
+
 ## Inputs
 
 - `release-type`: `prerelease | patch | minor | major` (default: `prerelease`)
@@ -27,6 +42,11 @@ Compatibility outputs are also provided: `normalized`, `tag`, `is_prerelease`.
 ## Example
 
 ```yaml
+- uses: actions/checkout@v6
+  with:
+    fetch-depth: 0
+    fetch-tags: true
+
 - name: Compute version
   id: version
   uses: vscheuber/version-bump-action@v1
