@@ -48,6 +48,12 @@ if [[ -n "$current_input" ]]; then
     fi
   done
 else
+  if git rev-parse --is-shallow-repository >/dev/null 2>&1; then
+    is_shallow_repo="$(git rev-parse --is-shallow-repository)"
+  else
+    is_shallow_repo='false'
+  fi
+
   all_tags="$(git tag --sort=-v:refname 2>/dev/null || true)"
   latest_semver=''
   latest_stable=''
@@ -141,6 +147,19 @@ else
   if [[ -z "${base_tag:-}" ]]; then
     base_tag='0.0.0'
     base_source='default-bootstrap'
+  fi
+
+  if [[ "$base_source" == 'package-json' || "$base_source" == 'default-bootstrap' ]]; then
+    echo "Unable to determine a reliable base version from git tags."
+    if [[ "$is_shallow_repo" == 'true' ]]; then
+      echo "Repository checkout is shallow."
+    fi
+    echo "Provide current-version explicitly or ensure the workflow checkout fetches full history and tags:"
+    echo "  - uses: actions/checkout@v6"
+    echo "    with:"
+    echo "      fetch-depth: 0"
+    echo "      fetch-tags: true"
+    exit 1
   fi
 fi
 
