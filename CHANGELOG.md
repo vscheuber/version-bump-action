@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## [v1.0.9] - 2026-08-02
+
+### Added
+- Improved error handling for shallow repositories in version computation, enhancing reliability in environments with limited repository history. (commit 2cc396f)
+
+### Changed
+- Updated README to include prerequisites and error handling guidance for shallow checkouts, providing developers with clearer setup instructions. (commit 8b5610c)
+- Enabled fetching tags during checkout in the release workflow, ensuring accurate version tagging in CI/CD processes. (commit 9271109)
+
 ## [v1.0.8] - 2026-08-02
 
 ### Changed
