@@ -54,7 +54,18 @@ else
     is_shallow_repo='false'
   fi
 
-  all_tags="$(git tag --sort=-v:refname 2>/dev/null || true)"
+  if [[ "$is_shallow_repo" == 'true' ]]; then
+    echo "Unable to determine a reliable base version from git tags."
+    echo "Repository checkout is shallow."
+    echo "Provide current-version explicitly or ensure the workflow checkout fetches full history and tags:"
+    echo "  - uses: actions/checkout@v6"
+    echo "    with:"
+    echo "      fetch-depth: 0"
+    echo "      fetch-tags: true"
+    exit 1
+  fi
+
+  all_tags="$(git tag --sort=-v:refname 2>/dev/null)"
   latest_semver=''
   latest_stable=''
 
@@ -136,31 +147,27 @@ else
     fi
   fi
 
-  if [[ -z "${base_tag:-}" && -f package.json ]]; then
-    pkg_version="$(node -p "require('./package.json').version" 2>/dev/null || true)"
-    if [[ -n "$pkg_version" ]]; then
-      base_tag="$pkg_version"
-      base_source='package-json'
+  if [[ -z "${base_tag:-}" ]]; then
+    if [[ -f package.json ]]; then
+      pkg_version="$(node -p "require('./package.json').version" 2>/dev/null || true)"
+      if [[ -n "$pkg_version" && "$pkg_version" =~ $semver_re ]]; then
+        echo "No tags found in repository. Bootstrapping base version from package.json (${pkg_version})."
+        base_tag="$pkg_version"
+        base_source='package-json-bootstrap'
+      fi
     fi
   fi
 
   if [[ -z "${base_tag:-}" ]]; then
+    echo "No tags found in repository and no valid semver in package.json. Bootstrapping base version to 0.0.0."
     base_tag='0.0.0'
     base_source='default-bootstrap'
   fi
+fi
 
-  if [[ "$base_source" == 'package-json' || "$base_source" == 'default-bootstrap' ]]; then
-    echo "Unable to determine a reliable base version from git tags."
-    if [[ "$is_shallow_repo" == 'true' ]]; then
-      echo "Repository checkout is shallow."
-    fi
-    echo "Provide current-version explicitly or ensure the workflow checkout fetches full history and tags:"
-    echo "  - uses: actions/checkout@v6"
-    echo "    with:"
-    echo "      fetch-depth: 0"
-    echo "      fetch-tags: true"
-    exit 1
-  fi
+echo "Resolved base version source: ${base_source}"
+if [[ -n "${base_ref:-}" ]]; then
+  echo "Resolved base tag reference: ${base_ref}"
 fi
 
 base="${base_tag#"${tag_prefix}"}"
