@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [v1.0.11] - 2026-08-03
+
+### Added
+- Introduced CI and release workflows for Node.js setup and unit tests, enhancing the development and deployment process. This addition ensures consistent testing and streamlined releases, contributing to overall project stability. (commit 02cc0c0)
+
 ## [v1.0.10] - 2026-08-02
 
 ### Changed
