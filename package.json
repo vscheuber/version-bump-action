@@ -3,5 +3,8 @@
   "version": "1.0.10",
   "private": true,
   "description": "GitHub Action that computes release versions and tags",
+  "scripts": {
+    "test": "bash test/compute-version.test.sh"
+  },
   "license": "MIT"
 }
