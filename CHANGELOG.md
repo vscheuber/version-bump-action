@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [v1.0.12] - 2026-08-18
+
+### Fixed
+- Resolved an issue where fork pull requests did not correctly use the `package.json` version as the base, ensuring more accurate version computation in these scenarios. This fix improves the reliability of version management in forked repositories. (commit 8ad0cc0)
+
 ## [v1.0.11] - 2026-08-03
 
 ### Added
