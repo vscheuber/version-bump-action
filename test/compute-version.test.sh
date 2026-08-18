@@ -46,4 +46,39 @@ assert_line "$out" 'base_ref=v1.0.1'
 assert_line "$out" 'newVersion=1.0.2'
 assert_line "$out" 'newTag=v1.0.2'
 
+repo2="$workspace/repo-fork-pr"
+out2="$workspace/out2.txt"
+event2="$workspace/event.json"
+mkdir -p "$repo2"
+cd "$repo2"
+
+git init -b main >/dev/null
+git config user.name 'Test User'
+git config user.email 'test@example.com'
+
+# Simulate a fork's divergent tag scheme (e.g. Trivir's v2.0.0-trivir.2)
+# while package.json correctly reflects the upstream (rockcarver) version.
+echo '{"name":"x","version":"4.6.0"}' > package.json
+git add package.json
+git commit -m 'init' >/dev/null
+git tag v2.0.0-trivir.2
+
+cat > "$event2" <<'EOF'
+{
+  "pull_request": {
+    "head": { "repo": { "full_name": "trivir/frodo-cli" } },
+    "base": { "repo": { "full_name": "rockcarver/frodo-cli" } }
+  }
+}
+EOF
+
+RELEASE_TYPE='prerelease' GITHUB_OUTPUT="$out2" GITHUB_EVENT_PATH="$event2" bash "$SCRIPT_PATH"
+
+assert_line "$out2" 'base=4.6.0'
+assert_line "$out2" 'base_source=package-json-fork-pr'
+assert_line "$out2" 'newVersion=4.6.1-1'
+assert_line "$out2" 'newTag=v4.6.1-1'
+
+cd "$repo"
+
 echo "All compute-version tests passed"

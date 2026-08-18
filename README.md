@@ -24,6 +24,11 @@ Bootstrap behavior:
 - If checkout is non-shallow and no tags exist, the action first tries `package.json` version (when valid semver), then falls back to `0.0.0`.
 - If checkout is shallow, the action fails with checkout guidance.
 
+Fork pull requests:
+
+- When running on a `pull_request` (or `pull_request_target`) event where the head repository differs from the base repository (i.e. a PR from a fork), the action skips local git tags entirely and uses the `package.json` version as the base instead. Forks may carry their own divergent tags (e.g. a contributor's internal prerelease train), and local tags visible in the checkout are not guaranteed to belong to the destination repo's release history. Detection reads `pull_request.head.repo.full_name` / `pull_request.base.repo.full_name` from `$GITHUB_EVENT_PATH`.
+- This only applies when no `current-version` input is supplied; an explicit `current-version` always takes precedence.
+
 ## Inputs
 
 - `release-type`: `prerelease | patch | minor | major` (default: `prerelease`)
@@ -46,6 +51,8 @@ When bootstrapping without tags, `base_source` is:
 
 - `package-json-bootstrap` when a valid semver is found in `package.json`
 - `default-bootstrap` when falling back to `0.0.0`
+
+On a fork pull request, `base_source` is `package-json-fork-pr`.
 
 Compatibility outputs are also provided: `normalized`, `tag`, `is_prerelease`.
 

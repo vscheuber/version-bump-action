@@ -48,68 +48,100 @@ if [[ -n "$current_input" ]]; then
     fi
   done
 else
-  if git rev-parse --is-shallow-repository >/dev/null 2>&1; then
-    is_shallow_repo="$(git rev-parse --is-shallow-repository)"
-  else
-    is_shallow_repo='false'
+  is_fork_pr='false'
+  if [[ -n "${GITHUB_EVENT_PATH:-}" && -f "${GITHUB_EVENT_PATH}" ]]; then
+    is_fork_pr="$(node -e "
+      try {
+        const fs = require('fs');
+        const evt = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+        const headRepo = evt.pull_request && evt.pull_request.head && evt.pull_request.head.repo;
+        const baseRepo = evt.pull_request && evt.pull_request.base && evt.pull_request.base.repo;
+        const isFork = !!(headRepo && baseRepo && headRepo.full_name !== baseRepo.full_name);
+        process.stdout.write(isFork ? 'true' : 'false');
+      } catch (e) {
+        process.stdout.write('false');
+      }
+    " 2>/dev/null || echo false)"
   fi
 
-  if [[ "$is_shallow_repo" == 'true' ]]; then
-    echo "Unable to determine a reliable base version from git tags."
-    echo "Repository checkout is shallow."
-    echo "Provide current-version explicitly or ensure the workflow checkout fetches full history and tags:"
-    echo "  - uses: actions/checkout@v6"
-    echo "    with:"
-    echo "      fetch-depth: 0"
-    echo "      fetch-tags: true"
-    exit 1
-  fi
-
-  all_tags="$(git tag --sort=-v:refname 2>/dev/null)"
-  latest_semver=''
-  latest_stable=''
-
-  while IFS= read -r tag; do
-    [[ -z "$tag" ]] && continue
-    stripped="${tag#"${tag_prefix}"}"
-    if [[ "$stripped" =~ $semver_re ]]; then
-      if [[ -z "$latest_semver" ]]; then
-        latest_semver="$tag"
-      fi
-      pre_component="${BASH_REMATCH[5]:-}"
-      if [[ -z "$pre_component" && -z "$latest_stable" ]]; then
-        latest_stable="$tag"
-      fi
-      if [[ -n "$latest_semver" && -n "$latest_stable" ]]; then
-        break
-      fi
+  if [[ "$is_fork_pr" == 'true' && -f package.json ]]; then
+    pkg_version="$(node -p "require('./package.json').version" 2>/dev/null || true)"
+    if [[ -n "$pkg_version" && "$pkg_version" =~ $semver_re ]]; then
+      echo "Detected pull request from a fork (head repo differs from base repo)."
+      echo "Local tags may belong to a divergent fork history, so using package.json version as base (${pkg_version})."
+      base_tag="$pkg_version"
+      base_source='package-json-fork-pr'
     fi
-  done <<< "$all_tags"
+  fi
 
-  if [[ "$release_type" == "prerelease" ]]; then
-    # For prereleases, continue an active prerelease train when that train is
-    # ahead of the latest stable release (e.g., stable 1.0.7 + prerelease 1.0.8-1).
-    # Otherwise, start a new prerelease train from the latest stable.
-    if [[ -n "$latest_semver" ]]; then
-      stripped_semver="${latest_semver#"${tag_prefix}"}"
-      if [[ "$stripped_semver" =~ $semver_re ]]; then
-        semver_core="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
-        semver_pre="${BASH_REMATCH[5]:-}"
+  if [[ -z "${base_tag:-}" ]]; then
+    if git rev-parse --is-shallow-repository >/dev/null 2>&1; then
+      is_shallow_repo="$(git rev-parse --is-shallow-repository)"
+    else
+      is_shallow_repo='false'
+    fi
 
-        if [[ -n "$semver_pre" ]]; then
-          if [[ -n "$latest_stable" ]]; then
-            stripped_stable="${latest_stable#"${tag_prefix}"}"
-            if [[ "$stripped_stable" =~ $semver_re ]]; then
-              stable_core="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
-              cmp="$(semver_core_cmp "$semver_core" "$stable_core")"
-              if [[ "$cmp" -gt 0 ]]; then
-                base_tag="$latest_semver"
-                base_source='latest-active-prerelease-tag'
-                base_ref="$latest_semver"
+    if [[ "$is_shallow_repo" == 'true' ]]; then
+      echo "Unable to determine a reliable base version from git tags."
+      echo "Repository checkout is shallow."
+      echo "Provide current-version explicitly or ensure the workflow checkout fetches full history and tags:"
+      echo "  - uses: actions/checkout@v6"
+      echo "    with:"
+      echo "      fetch-depth: 0"
+      echo "      fetch-tags: true"
+      exit 1
+    fi
+
+    all_tags="$(git tag --sort=-v:refname 2>/dev/null)"
+    latest_semver=''
+    latest_stable=''
+
+    while IFS= read -r tag; do
+      [[ -z "$tag" ]] && continue
+      stripped="${tag#"${tag_prefix}"}"
+      if [[ "$stripped" =~ $semver_re ]]; then
+        if [[ -z "$latest_semver" ]]; then
+          latest_semver="$tag"
+        fi
+        pre_component="${BASH_REMATCH[5]:-}"
+        if [[ -z "$pre_component" && -z "$latest_stable" ]]; then
+          latest_stable="$tag"
+        fi
+        if [[ -n "$latest_semver" && -n "$latest_stable" ]]; then
+          break
+        fi
+      fi
+    done <<< "$all_tags"
+
+    if [[ "$release_type" == "prerelease" ]]; then
+      # For prereleases, continue an active prerelease train when that train is
+      # ahead of the latest stable release (e.g., stable 1.0.7 + prerelease 1.0.8-1).
+      # Otherwise, start a new prerelease train from the latest stable.
+      if [[ -n "$latest_semver" ]]; then
+        stripped_semver="${latest_semver#"${tag_prefix}"}"
+        if [[ "$stripped_semver" =~ $semver_re ]]; then
+          semver_core="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+          semver_pre="${BASH_REMATCH[5]:-}"
+
+          if [[ -n "$semver_pre" ]]; then
+            if [[ -n "$latest_stable" ]]; then
+              stripped_stable="${latest_stable#"${tag_prefix}"}"
+              if [[ "$stripped_stable" =~ $semver_re ]]; then
+                stable_core="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+                cmp="$(semver_core_cmp "$semver_core" "$stable_core")"
+                if [[ "$cmp" -gt 0 ]]; then
+                  base_tag="$latest_semver"
+                  base_source='latest-active-prerelease-tag'
+                  base_ref="$latest_semver"
+                else
+                  base_tag="$latest_stable"
+                  base_source='latest-stable-tag'
+                  base_ref="$latest_stable"
+                fi
               else
-                base_tag="$latest_stable"
-                base_source='latest-stable-tag'
-                base_ref="$latest_stable"
+                base_tag="$latest_semver"
+                base_source='latest-semver-tag'
+                base_ref="$latest_semver"
               fi
             else
               base_tag="$latest_semver"
@@ -121,47 +153,43 @@ else
             base_source='latest-semver-tag'
             base_ref="$latest_semver"
           fi
-        else
-          base_tag="$latest_semver"
-          base_source='latest-semver-tag'
-          base_ref="$latest_semver"
+        fi
+      fi
+
+      if [[ -z "${base_tag:-}" && -n "$latest_stable" ]]; then
+        base_tag="$latest_stable"
+        base_source='latest-stable-tag'
+        base_ref="$latest_stable"
+      fi
+    else
+      # For stable releases, prefer the latest stable tag to avoid reusing an existing stable version.
+      if [[ -n "$latest_stable" ]]; then
+        base_tag="$latest_stable"
+        base_source='latest-stable-tag'
+        base_ref="$latest_stable"
+      elif [[ -n "$latest_semver" ]]; then
+        base_tag="$latest_semver"
+        base_source='latest-semver-tag'
+        base_ref="$latest_semver"
+      fi
+    fi
+
+    if [[ -z "${base_tag:-}" ]]; then
+      if [[ -f package.json ]]; then
+        pkg_version="$(node -p "require('./package.json').version" 2>/dev/null || true)"
+        if [[ -n "$pkg_version" && "$pkg_version" =~ $semver_re ]]; then
+          echo "No tags found in repository. Bootstrapping base version from package.json (${pkg_version})."
+          base_tag="$pkg_version"
+          base_source='package-json-bootstrap'
         fi
       fi
     fi
 
-    if [[ -z "${base_tag:-}" && -n "$latest_stable" ]]; then
-      base_tag="$latest_stable"
-      base_source='latest-stable-tag'
-      base_ref="$latest_stable"
+    if [[ -z "${base_tag:-}" ]]; then
+      echo "No tags found in repository and no valid semver in package.json. Bootstrapping base version to 0.0.0."
+      base_tag='0.0.0'
+      base_source='default-bootstrap'
     fi
-  else
-    # For stable releases, prefer the latest stable tag to avoid reusing an existing stable version.
-    if [[ -n "$latest_stable" ]]; then
-      base_tag="$latest_stable"
-      base_source='latest-stable-tag'
-      base_ref="$latest_stable"
-    elif [[ -n "$latest_semver" ]]; then
-      base_tag="$latest_semver"
-      base_source='latest-semver-tag'
-      base_ref="$latest_semver"
-    fi
-  fi
-
-  if [[ -z "${base_tag:-}" ]]; then
-    if [[ -f package.json ]]; then
-      pkg_version="$(node -p "require('./package.json').version" 2>/dev/null || true)"
-      if [[ -n "$pkg_version" && "$pkg_version" =~ $semver_re ]]; then
-        echo "No tags found in repository. Bootstrapping base version from package.json (${pkg_version})."
-        base_tag="$pkg_version"
-        base_source='package-json-bootstrap'
-      fi
-    fi
-  fi
-
-  if [[ -z "${base_tag:-}" ]]; then
-    echo "No tags found in repository and no valid semver in package.json. Bootstrapping base version to 0.0.0."
-    base_tag='0.0.0'
-    base_source='default-bootstrap'
   fi
 fi
 
