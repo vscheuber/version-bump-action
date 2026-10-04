@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [v1.1.0] - 2026-10-04
+
+### Added
+- Introduced a `premajor` release type for generating prereleases of the next major version. This allows pipelines to produce versions like `5.0.0-1` from a stable base version such as `4.18.0`. The release is tagged with `next`. If a `prerelease-identifier` is set, the format will be `-<prerelease_id>.1` (e.g., `5.0.0-alpha.1`). (#1)
+
 ## [v1.0.13] - 2026-10-03
 
 ### Added
@@ -107,3 +112,4 @@
 ### Fixed
 - Updated action name to 'Semantic Release Version Action' for better clarity and identification.
 
+[v1.1.0]: https://github.com/vscheuber/version-bump-action/compare/v1...v1.1.0
