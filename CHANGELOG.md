@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [v1.0.13] - 2026-10-03
+
+### Added
+- Added a `premajor` release type that produces a prerelease of the next major version (e.g. 4.18.0 → 5.0.0-1) with publish tag `next`. Subsequent `premajor` runs continue an active `X.0.0` prerelease train by incrementing the suffix.
+
 ## [v1.0.12] - 2026-08-18
 
 ### Fixed

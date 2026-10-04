@@ -25,9 +25,9 @@ semver_core_cmp() {
 }
 
 case "$release_type" in
-  prerelease|patch|minor|major) ;;
+  prerelease|premajor|patch|minor|major) ;;
   *)
-    echo "release-type must be one of: prerelease, patch, minor, major"
+    echo "release-type must be one of: prerelease, premajor, patch, minor, major"
     exit 1
     ;;
 esac
@@ -113,10 +113,11 @@ else
       fi
     done <<< "$all_tags"
 
-    if [[ "$release_type" == "prerelease" ]]; then
-      # For prereleases, continue an active prerelease train when that train is
-      # ahead of the latest stable release (e.g., stable 1.0.7 + prerelease 1.0.8-1).
-      # Otherwise, start a new prerelease train from the latest stable.
+    if [[ "$release_type" == "prerelease" || "$release_type" == "premajor" ]]; then
+      # For prerelease trains (prerelease and premajor), continue an active
+      # prerelease train when that train is ahead of the latest stable release
+      # (e.g., stable 1.0.7 + prerelease 1.0.8-1). Otherwise, start a new
+      # prerelease train from the latest stable.
       if [[ -n "$latest_semver" ]]; then
         stripped_semver="${latest_semver#"${tag_prefix}"}"
         if [[ "$stripped_semver" =~ $semver_re ]]; then
@@ -234,6 +235,38 @@ if [[ "$release_type" == "prerelease" ]]; then
       next="${major}.${minor}.$((patch + 1))-${prerelease_id}.1"
     else
       next="${major}.${minor}.$((patch + 1))-1"
+    fi
+  fi
+  is_prerelease='true'
+  action_release_type='prerelease'
+  publish_tag='next'
+elif [[ "$release_type" == "premajor" ]]; then
+  # premajor starts (or continues) a prerelease train for the next major
+  # version, e.g. 4.18.0 -> 5.0.0-1. Only a base that is itself an X.0.0
+  # prerelease (an active premajor train) continues that train via suffix
+  # increment; any other base starts a fresh train.
+  if [[ -n "$pre" && "$minor" == '0' && "$patch" == '0' ]]; then
+    if [[ "$pre" =~ ^([0-9]+)$ ]]; then
+      num="${BASH_REMATCH[1]}"
+      next="${major}.${minor}.${patch}-$((num + 1))"
+    elif [[ "$pre" =~ ^([A-Za-z0-9-]+)\.([0-9]+)$ ]]; then
+      label="${BASH_REMATCH[1]}"
+      num="${BASH_REMATCH[2]}"
+      next="${major}.${minor}.${patch}-${label}.$((num + 1))"
+    else
+      if [[ -n "$prerelease_id" ]]; then
+        next="${major}.${minor}.${patch}-${prerelease_id}.1"
+      elif [[ "$pre" =~ ^[A-Za-z0-9-]+$ ]]; then
+        next="${major}.${minor}.${patch}-${pre}.1"
+      else
+        next="${major}.${minor}.${patch}-1"
+      fi
+    fi
+  else
+    if [[ -n "$prerelease_id" ]]; then
+      next="$((stable_major + 1)).0.0-${prerelease_id}.1"
+    else
+      next="$((stable_major + 1)).0.0-1"
     fi
   fi
   is_prerelease='true'

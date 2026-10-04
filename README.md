@@ -31,10 +31,12 @@ Fork pull requests:
 
 ## Inputs
 
-- `release-type`: `prerelease | patch | minor | major` (default: `prerelease`)
+- `release-type`: `prerelease | premajor | patch | minor | major` (default: `prerelease`)
 - `current-version`: optional explicit base version, e.g. `1.2.3`, `1.2.3-rc.1`, or `v1.2.3`
 - `prerelease-identifier`: optional prerelease label, e.g. `rc`, `beta`, `alpha`
 - `tag-prefix`: tag prefix (default: `v`)
+
+`premajor` produces a prerelease of the next major version, e.g. `4.18.0` → `5.0.0-1`, published with tag `next`. Subsequent `premajor` runs continue that train (`5.0.0-1` → `5.0.0-2`), as do `prerelease` runs on a `X.0.0` prerelease base.
 
 ## Outputs
 
