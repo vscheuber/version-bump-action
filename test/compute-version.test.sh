@@ -22,6 +22,24 @@ assert_line() {
   fi
 }
 
+# Runs the compute script with an explicit base version and asserts output
+# lines. Usage: run_case <release-type> <current-version> <prerelease-id> \
+#   [expected-line ...]
+run_case() {
+  local release_type="$1"
+  local current_version="$2"
+  local prerelease_id="$3"
+  shift 3
+  : > "$out"
+  RELEASE_TYPE="$release_type" CURRENT_VERSION="$current_version" \
+    PRERELEASE_IDENTIFIER="$prerelease_id" GITHUB_OUTPUT="$out" \
+    bash "$SCRIPT_PATH" > /dev/null
+  local expected
+  for expected in "$@"; do
+    assert_line "$out" "$expected"
+  done
+}
+
 repo="$workspace/repo"
 out="$workspace/out.txt"
 mkdir -p "$repo"
@@ -80,5 +98,83 @@ assert_line "$out2" 'newVersion=4.6.1-1'
 assert_line "$out2" 'newTag=v4.6.1-1'
 
 cd "$repo"
+
+# --- premajor and regression matrix (explicit current-version) ---
+
+# premajor from a stable base starts the next major prerelease train.
+run_case 'premajor' '4.18.0' '' \
+  'base=4.18.0' \
+  'newVersion=5.0.0-1' \
+  'newTag=v5.0.0-1' \
+  'preRelease=true' \
+  'publishTag=next' \
+  'action_release_type=prerelease'
+
+# premajor on an active premajor train continues via numeric suffix.
+run_case 'premajor' '5.0.0-1' '' \
+  'newVersion=5.0.0-2' \
+  'newTag=v5.0.0-2' \
+  'preRelease=true' \
+  'publishTag=next'
+
+# prerelease on the same base is unchanged (existing behavior).
+run_case 'prerelease' '5.0.0-1' '' \
+  'newVersion=5.0.0-2' \
+  'newTag=v5.0.0-2' \
+  'preRelease=true' \
+  'publishTag=next'
+
+# prerelease from a stable base is unchanged (existing behavior).
+run_case 'prerelease' '4.18.0' '' \
+  'newVersion=4.18.1-1' \
+  'newTag=v4.18.1-1' \
+  'preRelease=true' \
+  'publishTag=next'
+
+# major from a stable base is unchanged (existing behavior).
+run_case 'major' '4.18.0' '' \
+  'newVersion=5.0.0' \
+  'newTag=v5.0.0' \
+  'preRelease=false' \
+  'publishTag=latest' \
+  'action_release_type=full'
+
+# premajor honors PRERELEASE_IDENTIFIER on a fresh train.
+run_case 'premajor' '4.18.0' 'rc' \
+  'newVersion=5.0.0-rc.1' \
+  'newTag=v5.0.0-rc.1' \
+  'preRelease=true' \
+  'publishTag=next'
+
+# premajor continues a labeled premajor train by incrementing the number.
+run_case 'premajor' '5.0.0-rc.1' '' \
+  'newVersion=5.0.0-rc.2' \
+  'newTag=v5.0.0-rc.2'
+
+# premajor on a bare-label suffix continues as label.N.
+run_case 'premajor' '5.0.0-beta' '' \
+  'newVersion=5.0.0-beta.1' \
+  'newTag=v5.0.0-beta.1'
+
+# Invalid release type fails with the updated message.
+invalid_out="$workspace/invalid.txt"
+: > "$invalid_out"
+if RELEASE_TYPE='banana' GITHUB_OUTPUT="$invalid_out" bash "$SCRIPT_PATH" > "$invalid_out" 2>&1; then
+  echo "Expected invalid release type 'banana' to exit nonzero"
+  exit 1
+fi
+assert_line "$invalid_out" 'release-type must be one of: prerelease, premajor, patch, minor, major'
+
+# patch on a prerelease base promotes the stable core (existing behavior).
+run_case 'patch' '1.2.3-rc.1' '' \
+  'newVersion=1.2.3' \
+  'newTag=v1.2.3' \
+  'preRelease=false' \
+  'publishTag=latest'
+
+# premajor does not continue an unrelated prerelease train (base is not X.0.0).
+run_case 'premajor' '4.19.0-2' '' \
+  'newVersion=5.0.0-1' \
+  'newTag=v5.0.0-1'
 
 echo "All compute-version tests passed"
